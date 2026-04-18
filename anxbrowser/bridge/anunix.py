@@ -4,12 +4,23 @@ The bridge is intentionally defensive: Anunix may not be running on the host,
 and the daemon must still be useful. When Anunix is unreachable the bridge
 enters degraded mode, logs the condition, and retries in the background.
 
-Anunix contract (per project docs):
+Anunix contract (verified against live kernel):
   POST /api/v1/exec
-  Body: { "command": "...", "args": [...] }
+  Body: { "command": "sysinfo" }                  # single shell command string
+  Response: { "status": "ok", "output": "..." }   # captured stdout
 
-This is the single entry point for now. More specific endpoints (state,
-tensor, cell) will be added as the Anunix API stabilizes.
+  GET /api/v1/health -> { "status": "healthy" }
+
+Commands follow ansh syntax:
+  - Object: write, cat, ls, inspect, rm, cp, mv
+  - Tensor: tensor create|info|stats|fill|slice|diff|quantize|search|...
+  - Model:  model info|layers|diff|import
+  - Cell:   cell create <name>, cells, cell run <cid>
+  - Network: dns, ping, http-get, fetch
+  - System: sysinfo, mem stats, netinfo
+
+This is the single entry point for now. More specific endpoints (binary
+tensor upload, streaming, etc.) will be added as the Anunix API grows.
 """
 
 from __future__ import annotations
@@ -72,15 +83,11 @@ class AnunixBridge:
         return self._enabled
 
     async def probe(self) -> bool:
-        """Check whether Anunix is reachable. Updates status."""
+        """Check whether Anunix is reachable. Uses /api/v1/health."""
         if not self._enabled:
             return False
         try:
-            data = await asyncio.to_thread(
-                self._post,
-                "/api/v1/exec",
-                {"command": "echo", "args": ["anxbrowser-probe"]},
-            )
+            data = await asyncio.to_thread(self._get, "/api/v1/health")
         except Exception as exc:
             self._status = BridgeStatus.DEGRADED
             self._last_error = str(exc)
@@ -91,19 +98,17 @@ class AnunixBridge:
         log.info("anunix bridge connected: %s", data)
         return True
 
+    async def exec(self, command: str) -> BridgeResult:
+        """Run a single ansh command string."""
+        return await self._call(command)
+
     async def bind_session_to_cell(
         self, session_id: str, cell_id: Optional[str] = None
     ) -> BridgeResult:
-        """Create or attach an Execution Cell for this browser session.
-
-        If cell_id is None, Anunix mints a new Cell and returns its id.
-        """
-        cmd = {
-            "command": "cell.create" if not cell_id else "cell.attach",
-            "args": ["--kind=browser", f"--session={session_id}"]
-            + ([f"--id={cell_id}"] if cell_id else []),
-        }
-        return await self._call(cmd)
+        """Create or attach an Execution Cell for this browser session."""
+        # Sanitise session_id: ansh cell names must not contain spaces.
+        name = f"browser-{session_id[:8]}"
+        return await self._call(f"cell create {name}")
 
     async def store_page_as_state_object(
         self,
@@ -116,25 +121,32 @@ class AnunixBridge:
     ) -> BridgeResult:
         """Record a page view as a State Object under ns_path.
 
-        Payload layout is intentionally simple for v0.1. When the Anunix state
-        API gains a dedicated endpoint, this method will call it directly.
+        For v0.1 the payload is a short descriptor (url + title + sha256s).
+        The full HTML/screenshot can be stored via dedicated endpoints once
+        Anunix exposes binary state upload.
         """
         html_hash = hashlib.sha256(html.encode("utf-8")).hexdigest()
         shot_hash = (
             hashlib.sha256(screenshot_png).hexdigest() if screenshot_png else None
         )
-        payload = {
-            "command": "state.put",
-            "args": [
-                f"--namespace={ns_path}",
-                f"--session={session_id}",
-                f"--url={url}",
-                f"--title={title}",
-                f"--html-sha256={html_hash}",
-            ]
-            + ([f"--screenshot-sha256={shot_hash}"] if shot_hash else []),
-        }
-        result = await self._call(payload)
+        descriptor = json.dumps(
+            {
+                "url": url,
+                "title": title,
+                "html_sha256": html_hash,
+                "screenshot_sha256": shot_hash,
+                "session": session_id,
+            },
+            separators=(",", ":"),
+        )
+        # ansh syntax: write <ns:path> <content...>
+        # Escape spaces by wrapping in quotes (bridge can't pass multi-word
+        # content through the single-string command API).  Use base64 for
+        # safety — the receiver can decode if needed.
+        import base64
+
+        b64 = base64.b64encode(descriptor.encode()).decode()
+        result = await self._call(f"write {ns_path} {b64}")
         if result.ok:
             result.data = result.data or {}
             result.data.setdefault(
@@ -149,23 +161,19 @@ class AnunixBridge:
         action: str,
         details: Dict[str, Any],
     ) -> BridgeResult:
-        """Create a provenance entry for an action."""
-        return await self._call(
-            {
-                "command": "state.action",
-                "args": [
-                    f"--session={session_id}",
-                    f"--action={action}",
-                    f"--details={json.dumps(details, separators=(',', ':'))}",
-                ],
-            }
-        )
+        """Log an action via echo (provenance dedicated endpoint is TBD)."""
+        summary = f"browser[{session_id[:8]}]:{action}"
+        return await self._call(f"echo {summary}")
 
-    async def _call(self, cmd: Dict[str, Any]) -> BridgeResult:
+    async def _call(self, command: str) -> BridgeResult:
         if not self._enabled:
             return BridgeResult(ok=False, error="bridge disabled")
         try:
-            data = await asyncio.to_thread(self._post, "/api/v1/exec", cmd)
+            data = await asyncio.to_thread(
+                self._post,
+                "/api/v1/exec",
+                {"command": command},
+            )
         except Exception as exc:
             self._status = BridgeStatus.DEGRADED
             self._last_error = str(exc)
@@ -174,6 +182,20 @@ class AnunixBridge:
         self._status = BridgeStatus.CONNECTED
         self._last_ok_at = time.time()
         return BridgeResult(ok=True, data=data)
+
+    def _get(self, path: str) -> Dict[str, Any]:
+        url = f"{self.base_url}{path}"
+        try:
+            with urlrequest.urlopen(url, timeout=self._timeout_s) as resp:
+                raw = resp.read()
+        except urlerror.URLError as exc:
+            raise RuntimeError(f"anunix unreachable: {exc}") from exc
+        if not raw:
+            return {}
+        try:
+            return json.loads(raw.decode("utf-8"))
+        except ValueError:
+            return {"raw": raw.decode("utf-8", errors="replace")}
 
     def _post(self, path: str, body: Dict[str, Any]) -> Dict[str, Any]:
         url = f"{self.base_url}{path}"

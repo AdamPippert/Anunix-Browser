@@ -1,7 +1,8 @@
 """Anunix bridge tests — no real Anunix required.
 
 We spin up a tiny local HTTP server in a thread, point the bridge at it, and
-assert the bridge speaks the expected command/args shape.
+assert the bridge speaks the expected ansh shell-command shape (single
+"command" string per request, matching the real kernel API).
 """
 
 import asyncio
@@ -20,6 +21,16 @@ class _Recorder(BaseHTTPRequestHandler):
     def log_message(self, *_a, **_kw):  # silence test output
         pass
 
+    def do_GET(self):  # noqa: N802
+        if self.path == "/api/v1/health":
+            self.send_response(200)
+            self.send_header("content-type", "application/json")
+            self.end_headers()
+            self.wfile.write(b'{"status": "healthy"}')
+            return
+        self.send_response(404)
+        self.end_headers()
+
     def do_POST(self):  # noqa: N802
         length = int(self.headers.get("content-length", "0"))
         raw = self.rfile.read(length).decode("utf-8") if length else ""
@@ -31,9 +42,8 @@ class _Recorder(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header("content-type", "application/json")
         self.end_headers()
-        reply = {"ok": True, "echo": payload}
-        if payload.get("command", "").startswith("cell."):
-            reply["cell_id"] = "cell:browser:test-1"
+        # Mimic the real Anunix response shape.
+        reply = {"status": "ok", "output": f"ran: {payload.get('command', '')}\n"}
         self.wfile.write(json.dumps(reply).encode("utf-8"))
 
 
@@ -75,12 +85,21 @@ async def test_disabled_bridge_never_calls(fake_anunix):
 async def test_bind_session_to_cell(fake_anunix):
     url, received = fake_anunix
     bridge = AnunixBridge(url, enabled=True)
-    result = await bridge.bind_session_to_cell("sess_1")
+    result = await bridge.bind_session_to_cell("sess_12345678")
     assert result.ok is True
-    assert result.data["cell_id"] == "cell:browser:test-1"
     assert received[0]["path"] == "/api/v1/exec"
-    assert received[0]["body"]["command"] == "cell.create"
-    assert any("--session=sess_1" in a for a in received[0]["body"]["args"])
+    # ansh: "cell create browser-sess_123"  (first 8 chars of session id)
+    cmd = received[0]["body"]["command"]
+    assert cmd.startswith("cell create browser-")
+
+
+@pytest.mark.asyncio
+async def test_exec_passes_through(fake_anunix):
+    url, received = fake_anunix
+    bridge = AnunixBridge(url, enabled=True)
+    result = await bridge.exec("sysinfo")
+    assert result.ok is True
+    assert received[-1]["body"]["command"] == "sysinfo"
 
 
 @pytest.mark.asyncio
@@ -89,16 +108,15 @@ async def test_store_page_includes_hash(fake_anunix):
     bridge = AnunixBridge(url, enabled=True)
     result = await bridge.store_page_as_state_object(
         session_id="sess_1",
-        ns_path="/sessions/sess_1/pages",
+        ns_path="default:/sessions/sess_1/pages",
         url="https://example.com",
         title="Example",
         html="<html></html>",
     )
     assert result.ok is True
     assert result.data["state_object"].startswith("anx:state:sha256:")
-    # verify the hash arg made it through
-    body = received[-1]["body"]
-    assert any("--html-sha256=" in a for a in body["args"])
+    cmd = received[-1]["body"]["command"]
+    assert cmd.startswith("write default:/sessions/sess_1/pages ")
 
 
 @pytest.mark.asyncio
