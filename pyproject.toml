@@ -1,0 +1,37 @@
+[project]
+name = "anxbrowser"
+version = "0.1.0"
+description = "Collaborative web browser for humans and AI agents, integrated with Anunix."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Adam Pippert" }]
+requires-python = ">=3.10"
+dependencies = [
+    "aiohttp>=3.9,<4",
+    "playwright>=1.40,<2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.1.0",
+]
+
+[project.scripts]
+anxbrowserd = "anxbrowser.server:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["anxbrowser*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
