@@ -11,6 +11,8 @@ from typing import Any, Dict
 
 
 ALLOWED_WAIT_UNTIL = ("load", "domcontentloaded", "networkidle", "commit")
+ALLOWED_BROWSER_ENGINES = ("chromium", "firefox")
+ALLOWED_DOM_SNAPSHOT_MODES = ("light", "full")
 
 KNOWN_VERBS = (
     "navigate",
@@ -66,6 +68,28 @@ def validate_create_session(body: Dict[str, Any]) -> Dict[str, Any]:
         isinstance(viewport.get("width"), int) and isinstance(viewport.get("height"), int)
     ):
         raise ProtocolError("invalid_request", "viewport requires integer width/height")
+
+    browser_engine = _optional(body, "browser_engine", str, "chromium").lower()
+    if browser_engine not in ALLOWED_BROWSER_ENGINES:
+        raise ProtocolError(
+            "invalid_request",
+            f"browser_engine must be one of {ALLOWED_BROWSER_ENGINES}",
+        )
+
+    dom_snapshot_mode = _optional(body, "dom_snapshot_mode", str, "light").lower()
+    if dom_snapshot_mode not in ALLOWED_DOM_SNAPSHOT_MODES:
+        raise ProtocolError(
+            "invalid_request",
+            f"dom_snapshot_mode must be one of {ALLOWED_DOM_SNAPSHOT_MODES}",
+        )
+
+    dom_text_max_chars = _optional(body, "dom_text_max_chars", int, 4096)
+    if not (256 <= dom_text_max_chars <= 65536):
+        raise ProtocolError(
+            "invalid_request",
+            "dom_text_max_chars must be between 256 and 65536",
+        )
+
     user_agent = _optional(body, "user_agent", str, "")
     cell_id = _optional(body, "cell_id", str, "")
     namespace = _optional(body, "namespace", str, "/sessions")
@@ -73,6 +97,9 @@ def validate_create_session(body: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "headless": headless,
         "viewport": viewport,
+        "browser_engine": browser_engine,
+        "dom_snapshot_mode": dom_snapshot_mode,
+        "dom_text_max_chars": dom_text_max_chars,
         "user_agent": user_agent or None,
         "cell_id": cell_id or None,
         "namespace": namespace,

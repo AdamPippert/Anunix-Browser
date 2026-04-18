@@ -121,7 +121,7 @@ scripts/             # Dev scripts
 
 ## Status
 
-**Phase 0 — Foundation (current).** Daemon boots, sessions launch Chromium via Playwright, basic actions (navigate, click, type, observe, screenshot) work end to end, the collaborative UI streams live screenshots, and the Anunix bridge records actions as State Objects when Anunix is reachable.
+**Phase 0 — Foundation (current).** Daemon boots, sessions launch Playwright engines (Chromium and Firefox) with per-session engine selection, basic actions (navigate, click, type, observe, screenshot) work end to end, the collaborative UI streams live screenshots, and the Anunix bridge records actions as State Objects when Anunix is reachable. Default DOM capture mode is lightweight (`dom_snapshot_mode=light`) to reduce memory pressure when hashing page state.
 
 See [`docs/ROADMAP.md`](docs/ROADMAP.md) for what comes next.
 

@@ -95,6 +95,9 @@ async def create_session(request: web.Request) -> web.Response:
         session = await manager.create_session(
             headless=params["headless"],
             viewport=params["viewport"],
+            browser_engine=params["browser_engine"],
+            dom_snapshot_mode=params["dom_snapshot_mode"],
+            dom_text_max_chars=params["dom_text_max_chars"],
             user_agent=params["user_agent"],
             cell_id=params["cell_id"],
             namespace=params["namespace"],
@@ -107,6 +110,8 @@ async def create_session(request: web.Request) -> web.Response:
             "session_id": session.session_id,
             "cell_id": session.cell_id,
             "created_at": session.created_at,
+            "browser_engine": session.browser_engine,
+            "dom_snapshot_mode": session.dom_snapshot_mode,
             "stream_url": f"/api/v1/sessions/{session.session_id}/stream",
         },
         status=201,

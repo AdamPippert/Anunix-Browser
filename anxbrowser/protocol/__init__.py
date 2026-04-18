@@ -1,6 +1,8 @@
 """ANX-Browser Protocol schemas and validators."""
 
 from .schema import (
+    ALLOWED_BROWSER_ENGINES,
+    ALLOWED_DOM_SNAPSHOT_MODES,
     ALLOWED_WAIT_UNTIL,
     KNOWN_VERBS,
     ProtocolError,
@@ -15,6 +17,8 @@ from .schema import (
 )
 
 __all__ = [
+    "ALLOWED_BROWSER_ENGINES",
+    "ALLOWED_DOM_SNAPSHOT_MODES",
     "ALLOWED_WAIT_UNTIL",
     "KNOWN_VERBS",
     "ProtocolError",

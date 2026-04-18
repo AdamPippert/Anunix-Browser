@@ -24,6 +24,9 @@ class TestCreateSession:
         out = validate_create_session({})
         assert out["headless"] is True
         assert out["viewport"] == {"width": 1280, "height": 800}
+        assert out["browser_engine"] == "chromium"
+        assert out["dom_snapshot_mode"] == "light"
+        assert out["dom_text_max_chars"] == 4096
         assert out["namespace"] == "/sessions"
         assert out["record"] is False
 
@@ -34,6 +37,18 @@ class TestCreateSession:
     def test_invalid_viewport(self):
         with pytest.raises(ProtocolError):
             validate_create_session({"viewport": {"width": "big", "height": 600}})
+
+    def test_invalid_browser_engine(self):
+        with pytest.raises(ProtocolError):
+            validate_create_session({"browser_engine": "webkit"})
+
+    def test_invalid_dom_snapshot_mode(self):
+        with pytest.raises(ProtocolError):
+            validate_create_session({"dom_snapshot_mode": "raw"})
+
+    def test_invalid_dom_text_limit(self):
+        with pytest.raises(ProtocolError):
+            validate_create_session({"dom_text_max_chars": 32})
 
 
 class TestNavigate:

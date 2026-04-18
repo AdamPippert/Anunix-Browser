@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import json
 import logging
 import time
 import uuid
@@ -29,6 +30,8 @@ class SessionInfo:
     cell_id: Optional[str]
     namespace: str
     created_at: float
+    browser_engine: str = "chromium"
+    dom_snapshot_mode: str = "light"
     current_url: str = "about:blank"
     driver: Optional[str] = None
     subscribers: int = 0
@@ -45,6 +48,9 @@ class BrowserSession:
         bridge: AnunixBridge,
         namespace: str,
         cell_id: Optional[str],
+        browser_engine: str = "chromium",
+        dom_snapshot_mode: str = "light",
+        dom_text_max_chars: int = 4096,
     ) -> None:
         self.session_id = session_id
         self._context = context
@@ -52,6 +58,9 @@ class BrowserSession:
         self._bridge = bridge
         self.namespace = namespace
         self.cell_id = cell_id
+        self.browser_engine = browser_engine
+        self.dom_snapshot_mode = dom_snapshot_mode
+        self.dom_text_max_chars = max(256, min(dom_text_max_chars, 65536))
         self.created_at = time.time()
         self.bus = EventBus()
         self.driver: Optional[str] = None
@@ -71,10 +80,59 @@ class BrowserSession:
             cell_id=self.cell_id,
             namespace=self.namespace,
             created_at=self.created_at,
+            browser_engine=self.browser_engine,
+            dom_snapshot_mode=self.dom_snapshot_mode,
             current_url=self._page.url if self._page else "about:blank",
             driver=self.driver,
             subscribers=self.bus.subscriber_count,
         )
+
+    async def _visible_text(self, max_chars: Optional[int] = None) -> str:
+        limit = max_chars or self.dom_text_max_chars
+        return await self._page.evaluate(
+            """(limit) => {
+                const t = document.body ? document.body.innerText : "";
+                return t.replace(/\s+/g, " ").trim().slice(0, limit);
+            }""",
+            limit,
+        )
+
+    async def _light_dom_descriptor(self) -> Dict[str, Any]:
+        return await self._page.evaluate(
+            """(maxChars) => {
+                const root = document.body || document.documentElement;
+                const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+                let textNodes = 0;
+                let textChars = 0;
+                let sample = "";
+                while (walker.nextNode()) {
+                    const value = (walker.currentNode.nodeValue || "").trim();
+                    if (!value) continue;
+                    textNodes += 1;
+                    textChars += value.length;
+                    if (sample.length < maxChars) {
+                        sample += (sample ? " " : "") + value;
+                        if (sample.length > maxChars) sample = sample.slice(0, maxChars);
+                    }
+                }
+                return {
+                    url: location.href,
+                    title: document.title,
+                    readyState: document.readyState,
+                    elementCount: document.getElementsByTagName("*").length,
+                    textNodes,
+                    textChars,
+                    textSample: sample,
+                };
+            }""",
+            min(self.dom_text_max_chars, 8192),
+        )
+
+    async def _bridge_dom_payload(self) -> str:
+        if self.dom_snapshot_mode == "full":
+            return await self._page.content()
+        descriptor = await self._light_dom_descriptor()
+        return json.dumps(descriptor, separators=(",", ":"), ensure_ascii=False)
 
     # --- Core actions ----------------------------------------------------
 
@@ -82,13 +140,13 @@ class BrowserSession:
         response = await self._page.goto(url, wait_until=wait_until)
         title = await self._page.title()
         status = response.status if response else 0
-        html = await self._page.content()
+        html_for_bridge = await self._bridge_dom_payload()
         bridge_result = await self._bridge.store_page_as_state_object(
             session_id=self.session_id,
             ns_path=f"{self.namespace}/{self.session_id}/pages",
             url=self._page.url,
             title=title,
-            html=html,
+            html=html_for_bridge,
         )
         page_so = (
             bridge_result.data.get("state_object")
@@ -122,22 +180,20 @@ class BrowserSession:
         url = self._page.url
         visible_text = ""
         if text_only:
-            visible_text = await self._page.evaluate(
-                "() => document.body ? document.body.innerText : ''"
-            )
-            visible_text = " ".join(visible_text.split())[:4096]
+            visible_text = await self._visible_text(4096)
         html = await self._page.content() if include_html else None
         shot_b64 = None
         shot_bytes = None
         if include_screenshot:
             shot_bytes = await self._page.screenshot(type="png", full_page=False)
             shot_b64 = base64.b64encode(shot_bytes).decode("ascii")
+        html_for_bridge = html if html is not None else await self._bridge_dom_payload()
         bridge_result = await self._bridge.store_page_as_state_object(
             session_id=self.session_id,
             ns_path=f"{self.namespace}/{self.session_id}/observations",
             url=url,
             title=title,
-            html=html or "",
+            html=html_for_bridge,
             screenshot_png=shot_bytes,
         )
         page_so = (
@@ -280,7 +336,7 @@ class SessionManager:
         self._headless_default = headless_default
         self._sessions: Dict[str, BrowserSession] = {}
         self._playwright: Any = None
-        self._browser: Any = None
+        self._browsers: Dict[tuple[str, bool], Any] = {}
         self._lock = asyncio.Lock()
 
     async def start(self) -> None:
@@ -294,21 +350,38 @@ class SessionManager:
             return
         try:
             self._playwright = await async_playwright().start()
-            self._browser = await self._playwright.chromium.launch(
-                headless=self._headless_default
-            )
-            log.info(
-                "playwright started, chromium launched (headless=%s)",
-                self._headless_default,
-            )
+            log.info("playwright started")
         except Exception as exc:
             log.warning(
                 "playwright failed to start (%s); session creation will fail. "
-                "run `python -m playwright install chromium`.",
+                "run `python -m playwright install chromium firefox`.",
                 exc,
             )
             self._playwright = None
-            self._browser = None
+
+    async def _ensure_browser(self, browser_engine: str, headless: bool) -> Any:
+        if self._playwright is None:
+            raise RuntimeError(
+                "browser engine unavailable; install playwright with `make deps`"
+            )
+        if browser_engine not in ("chromium", "firefox"):
+            raise RuntimeError(f"unsupported browser_engine: {browser_engine}")
+
+        key = (browser_engine, bool(headless))
+        browser = self._browsers.get(key)
+        if browser:
+            return browser
+
+        launcher = getattr(self._playwright, browser_engine)
+        try:
+            browser = await launcher.launch(headless=bool(headless))
+        except Exception as exc:
+            raise RuntimeError(
+                f"failed to launch {browser_engine}; run `python -m playwright install {browser_engine}` ({exc})"
+            ) from exc
+        self._browsers[key] = browser
+        log.info("launched %s (headless=%s)", browser_engine, bool(headless))
+        return browser
 
     async def stop(self) -> None:
         for sid in list(self._sessions):
@@ -316,27 +389,34 @@ class SessionManager:
                 await self.close_session(sid)
             except Exception:
                 pass
-        if self._browser:
-            await self._browser.close()
+        for browser in list(self._browsers.values()):
+            try:
+                await browser.close()
+            except Exception:
+                pass
+        self._browsers.clear()
         if self._playwright:
             await self._playwright.stop()
 
     async def create_session(
         self,
-        headless: bool = True,
+        headless: Optional[bool] = None,
         viewport: Optional[Dict[str, int]] = None,
+        browser_engine: str = "chromium",
+        dom_snapshot_mode: str = "light",
+        dom_text_max_chars: int = 4096,
         user_agent: Optional[str] = None,
         cell_id: Optional[str] = None,
         namespace: str = "/sessions",
     ) -> BrowserSession:
         async with self._lock:
-            if self._browser is None:
-                raise RuntimeError(
-                    "browser engine unavailable; install playwright with `make deps`"
-                )
+            effective_headless = (
+                self._headless_default if headless is None else bool(headless)
+            )
+            browser = await self._ensure_browser(browser_engine, effective_headless)
             session_id = f"sess_{uuid.uuid4().hex[:12]}"
             vp = viewport or {"width": 1280, "height": 800}
-            context = await self._browser.new_context(
+            context = await browser.new_context(
                 viewport=vp, user_agent=user_agent
             )
             page = await context.new_page()
@@ -355,6 +435,9 @@ class SessionManager:
                 bridge=self._bridge,
                 namespace=namespace,
                 cell_id=effective_cell,
+                browser_engine=browser_engine,
+                dom_snapshot_mode=dom_snapshot_mode,
+                dom_text_max_chars=dom_text_max_chars,
             )
             self._sessions[session_id] = session
             await session.bus.publish(
@@ -362,6 +445,8 @@ class SessionManager:
                 {
                     "session_id": session_id,
                     "cell_id": effective_cell,
+                    "browser_engine": browser_engine,
+                    "dom_snapshot_mode": dom_snapshot_mode,
                     "created_at": session.created_at,
                 },
             )

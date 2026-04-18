@@ -43,7 +43,10 @@ Request:
 ```json
 {
   "headless": true,
+  "browser_engine": "chromium",
   "viewport": { "width": 1280, "height": 800 },
+  "dom_snapshot_mode": "light",
+  "dom_text_max_chars": 4096,
   "user_agent": null,
   "cell_id": null,
   "namespace": "/sessions",
@@ -51,7 +54,13 @@ Request:
 }
 ```
 
-All fields optional. `cell_id` binds the session to an existing Anunix Execution Cell; if null, the bridge creates one. `namespace` is the Anunix path under which State Objects will be written. `record` enables continuous session recording.
+All fields optional.
+- `browser_engine`: `chromium` or `firefox`.
+- `dom_snapshot_mode`: `light` (default, low-memory descriptor hashing) or `full` (full HTML capture for hashing).
+- `dom_text_max_chars`: cap for DOM text sampling in lightweight mode.
+- `cell_id` binds the session to an existing Anunix Execution Cell; if null, the bridge creates one.
+- `namespace` is the Anunix path under which State Objects will be written.
+- `record` enables continuous session recording.
 
 Response 201:
 ```json
@@ -59,6 +68,8 @@ Response 201:
   "session_id": "01HX7YQG4R9ZPQ2K7N8H3M5VGC",
   "cell_id": "cell:browser:01HX7...",
   "created_at": "2026-04-18T14:02:11Z",
+  "browser_engine": "chromium",
+  "dom_snapshot_mode": "light",
   "stream_url": "/api/v1/sessions/01HX7YQG4R9ZPQ2K7N8H3M5VGC/stream"
 }
 ```
