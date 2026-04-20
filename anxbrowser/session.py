@@ -415,7 +415,15 @@ class SessionManager:
             )
             browser = await self._ensure_browser(browser_engine, effective_headless)
             session_id = f"sess_{uuid.uuid4().hex[:12]}"
-            vp = viewport or {"width": 1280, "height": 800}
+            if viewport is not None:
+                vp = viewport
+            else:
+                fb = await self._bridge.get_fb_info()
+                vp = (
+                    {"width": fb["width"], "height": fb["height"]}
+                    if fb
+                    else {"width": 1280, "height": 800}
+                )
             context = await browser.new_context(
                 viewport=vp, user_agent=user_agent
             )

@@ -22,7 +22,7 @@ from ..session import SessionManager
 
 log = logging.getLogger(__name__)
 
-FRAME_INTERVAL_S = 1.0  # Phase 0 keeps FPS modest
+FRAME_INTERVAL_S = 0.033  # ~30 FPS
 
 
 async def stream(request: web.Request) -> web.StreamResponse:
