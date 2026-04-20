@@ -16,6 +16,7 @@ from .bridge import AnunixBridge
 from .config import Config
 from .handlers import sessions as sessions_h
 from .handlers import stream as stream_h
+from .handlers import stream_native as stream_native_h
 from .session import SessionManager
 
 log = logging.getLogger(__name__)
@@ -81,6 +82,7 @@ def build_app(cfg: Config | None = None) -> web.Application:
     app.router.add_post("/api/v1/sessions/{sid}/claim", sessions_h.claim)
     app.router.add_post("/api/v1/sessions/{sid}/release", sessions_h.release)
     app.router.add_get("/api/v1/sessions/{sid}/stream", stream_h.stream)
+    app.router.add_get("/api/v1/sessions/{sid}/stream_raw", stream_native_h.stream_raw)
 
     if os.path.isdir(cfg.static_dir):
         app.router.add_static("/ui/", cfg.static_dir, show_index=False)

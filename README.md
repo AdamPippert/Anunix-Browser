@@ -121,9 +121,11 @@ scripts/             # Dev scripts
 
 ## Status
 
-**Phase 0 — Foundation (current).** Daemon boots, sessions launch Playwright engines (Chromium and Firefox) with per-session engine selection, basic actions (navigate, click, type, observe, screenshot) work end to end, the collaborative UI streams live screenshots, and the Anunix bridge records actions as State Objects when Anunix is reachable. Default DOM capture mode is lightweight (`dom_snapshot_mode=light`) to reduce memory pressure when hashing page state.
+**2026.4.19** — Native kernel streaming. anxbrowserd now serves binary JPEG frames directly to the Anunix kernel via `GET /api/v1/sessions/{sid}/stream_raw`, enabling graphical browser rendering on bare metal and in QEMU. The daemon binds `0.0.0.0` by default so the QEMU guest can connect at `10.0.2.2:9090`. Frame rate is ~30 FPS. Session viewport auto-sizes to match the Anunix framebuffer dimensions.
 
-See [`docs/ROADMAP.md`](docs/ROADMAP.md) for what comes next.
+**Phase 0 — Foundation.** Daemon boots, sessions launch Playwright engines (Chromium and Firefox) with per-session engine selection, basic actions (navigate, click, type, observe, screenshot) work end to end, the collaborative UI streams live screenshots, and the Anunix bridge records actions as State Objects when Anunix is reachable.
+
+See [`RELEASE-2026.4.19.md`](RELEASE-2026.4.19.md) for the latest release notes and [`docs/ROADMAP.md`](docs/ROADMAP.md) for what comes next.
 
 ---
 
