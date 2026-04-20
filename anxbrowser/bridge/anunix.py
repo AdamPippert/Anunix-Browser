@@ -165,6 +165,18 @@ class AnunixBridge:
         summary = f"browser[{session_id[:8]}]:{action}"
         return await self._call(f"echo {summary}")
 
+    async def get_fb_info(self) -> Optional[Dict[str, Any]]:
+        """Return current framebuffer dimensions from Anunix, or None."""
+        if not self._enabled:
+            return None
+        try:
+            data = await asyncio.to_thread(self._get, "/api/v1/fb")
+        except Exception:
+            return None
+        if not data.get("available"):
+            return None
+        return data  # keys: available, width, height, pitch, bpp
+
     async def _call(self, command: str) -> BridgeResult:
         if not self._enabled:
             return BridgeResult(ok=False, error="bridge disabled")

@@ -28,7 +28,7 @@ class Config:
         here = os.path.dirname(os.path.abspath(__file__))
         web_dir = os.path.abspath(os.path.join(here, "..", "web"))
         return cls(
-            host=os.environ.get("ANXB_HOST", "127.0.0.1"),
+            host=os.environ.get("ANXB_HOST", "0.0.0.0"),
             port=int(os.environ.get("ANXB_PORT", "9090")),
             anunix_base_url=os.environ.get("ANXB_ANUNIX_URL", "http://127.0.0.1:8080"),
             anunix_enabled=_truthy(os.environ.get("ANXB_ANUNIX", "auto")),
