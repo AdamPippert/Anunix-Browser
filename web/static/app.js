@@ -253,6 +253,14 @@ document.addEventListener("keydown", (e) => {
   STATE.ws.send(JSON.stringify({type: "keydown", key: e.key, code: e.code}));
 });
 
+/* Scroll wheel over the frame → send delta to session */
+document.addEventListener("wheel", (e) => {
+  if (!STATE.ws || STATE.ws.readyState !== 1) return;
+  if (!_pageCoords(e)) return;
+  e.preventDefault();
+  STATE.ws.send(JSON.stringify({type: "scroll", dy: Math.round(e.deltaY)}));
+}, {passive: false});
+
 /* ── PII warning modal ─────────────────────────────────────────── */
 
 function showPiiWarning(payload, ws) {
