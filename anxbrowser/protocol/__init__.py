@@ -12,6 +12,7 @@ from .schema import (
     validate_navigate,
     validate_observe,
     validate_scroll,
+    validate_submit,
     validate_type,
     validate_wait_for,
 )
@@ -28,6 +29,7 @@ __all__ = [
     "validate_navigate",
     "validate_observe",
     "validate_scroll",
+    "validate_submit",
     "validate_type",
     "validate_wait_for",
 ]

@@ -167,3 +167,20 @@ def validate_wait_for(body: Dict[str, Any]) -> Dict[str, Any]:
 def validate_eval(body: Dict[str, Any]) -> Dict[str, Any]:
     expression = _require(body, "expression", str)
     return {"expression": expression}
+
+
+def validate_submit(body: Dict[str, Any]) -> Dict[str, Any]:
+    body = body or {}
+    action = _optional(body, "action", str, "")
+    method = _optional(body, "method", str, "GET").upper()
+    if method not in ("GET", "POST"):
+        raise ProtocolError("invalid_request", "method must be GET or POST")
+    fields = body.get("fields", {})
+    if not isinstance(fields, dict):
+        raise ProtocolError("invalid_request", "fields must be an object")
+    clean: Dict[str, str] = {}
+    for k, v in fields.items():
+        if not isinstance(k, str):
+            raise ProtocolError("invalid_request", "field keys must be strings")
+        clean[k] = str(v)
+    return {"action": action, "method": method, "fields": clean}
