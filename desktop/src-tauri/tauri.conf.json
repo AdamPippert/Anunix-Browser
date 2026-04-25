@@ -1,0 +1,28 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Anunix Browser",
+  "version": "0.1.0",
+  "identifier": "app.anunix.browser",
+  "build": {
+    "frontendDist": "../"
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": []
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Anunix Browser",
+        "width": 1400,
+        "height": 900,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self' http://localhost:9191 ws://localhost:9191; img-src 'self' data:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com"
+    }
+  }
+}

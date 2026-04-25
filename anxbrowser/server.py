@@ -53,9 +53,30 @@ async def _index(request: web.Request) -> web.StreamResponse:
     return web.FileResponse(index_path)
 
 
+@web.middleware
+async def _cors_middleware(request: web.Request, handler) -> web.Response:
+    if request.method == "OPTIONS":
+        return web.Response(
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+                "Access-Control-Allow-Headers": "Content-Type",
+            }
+        )
+    response = await handler(request)
+    # WebSocketResponse (and other StreamResponse subclasses) are already
+    # prepared by the time the handler returns — headers are immutable.
+    if not response.prepared:
+        response.headers.setdefault("Access-Control-Allow-Origin", "*")
+    return response
+
+
 def build_app(cfg: Config | None = None) -> web.Application:
     cfg = cfg or Config.from_env()
-    app = web.Application(client_max_size=16 * 1024 * 1024)
+    app = web.Application(
+        client_max_size=16 * 1024 * 1024,
+        middlewares=[_cors_middleware],
+    )
     bridge = AnunixBridge(
         base_url=cfg.anunix_base_url,
         enabled=cfg.anunix_enabled,

@@ -1,0 +1,301 @@
+/* ── Aether Desktop overrides ────────────────────────────────────
+   Extends app.css with the full desktop window chrome:
+   glass tab bar, toolstrip chrome bar, traffic lights, Aether splash.
+   ─────────────────────────────────────────────────────────────── */
+
+/* ── Glass tab bar (Aether topbar pattern) ──────────────────────── */
+.tab-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 8px 10px 0;
+  /* Glassmorphism over the Aether wallpaper */
+  background: rgba(14, 35, 56, 0.52);
+  backdrop-filter: blur(18px) saturate(1.4);
+  -webkit-backdrop-filter: blur(18px) saturate(1.4);
+  border-bottom: 1px solid rgba(127, 201, 211, 0.18);
+  box-shadow: 0 4px 14px -4px rgba(0, 0, 0, 0.3);
+  overflow-x: auto;
+  scrollbar-width: none;
+  /* Override the paper surface that app.css sets on <main> */
+  position: relative;
+  z-index: 10;
+}
+.tab-bar::-webkit-scrollbar { display: none; }
+
+/* Individual tabs */
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 13px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  color: rgba(255, 255, 255, 0.55);
+  cursor: pointer;
+  font-family: 'Inter', -apple-system, sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  max-width: 168px;
+  flex-shrink: 0;
+  transition: background 0.12s, color 0.12s;
+}
+.tab-title { overflow: hidden; text-overflow: ellipsis; }
+.tab:hover { background: rgba(255, 255, 255, 0.1); color: rgba(255, 255, 255, 0.85); }
+
+.tab-active {
+  background: var(--ax-paper-100);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: var(--ax-ink-900);
+  box-shadow: 0 -1px 0 rgba(58, 148, 166, 0.6);
+}
+
+.tab-close {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 13px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: background 0.1s, color 0.1s;
+}
+.tab-active .tab-close { color: var(--ax-ink-500); }
+.tab-close:hover { background: rgba(204, 58, 42, 0.25); color: #ff8b7a; }
+
+.tab-new {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 20px;
+  padding: 2px 10px;
+  cursor: pointer;
+  border-radius: 6px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-bottom: 4px;
+  transition: background 0.1s, color 0.1s;
+}
+.tab-new:hover { color: rgba(255, 255, 255, 0.85); background: rgba(255, 255, 255, 0.08); }
+
+/* ── Chrome bar (Aether toolstrip pattern) ──────────────────────── */
+.chrome {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: linear-gradient(180deg, var(--ax-paper-100) 0%, var(--ax-paper-200) 100%);
+  border-bottom: 1px solid var(--ax-border-strong);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.65) inset,
+    0 1px 3px rgba(14, 35, 56, 0.06);
+}
+
+.chrome-nav { display: flex; gap: 2px; align-items: center; }
+
+.chrome-btn {
+  width: 26px;
+  height: 26px;
+  background: var(--ax-surface);
+  border: 1px solid var(--ax-border-strong);
+  border-radius: var(--ax-radius-sm);
+  color: var(--ax-ink-500);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--ax-bevel-btn);
+  transition: background 0.1s, color 0.1s;
+}
+.chrome-btn:hover { background: #fff; color: var(--ax-navy-700); }
+
+/* URL input — JetBrains Mono, inset shadow, teal focus ring */
+.chrome #url-input {
+  flex: 1;
+  background: var(--ax-surface);
+  color: var(--ax-ink-700);
+  border: 1px solid var(--ax-border-strong);
+  padding: 4px 12px;
+  border-radius: var(--ax-radius-sm);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 11.5px;
+  box-shadow: inset 0 1px 3px rgba(14, 35, 56, 0.07), 0 1px 0 rgba(255,255,255,0.9);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.chrome #url-input:focus {
+  outline: none;
+  border-color: var(--ax-teal-500);
+  box-shadow: inset 0 1px 3px rgba(14, 35, 56, 0.07), 0 0 0 3px rgba(58, 148, 166, 0.16);
+}
+.chrome #url-input::placeholder { color: var(--ax-ink-400); }
+
+/* Go button — teal gradient */
+.chrome #navigate-btn {
+  background: var(--ax-grad-soft);
+  color: #fff;
+  border: 1px solid rgba(29, 68, 112, 0.5);
+  padding: 4px 14px;
+  border-radius: var(--ax-radius-sm);
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.25) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.18) inset;
+  transition: filter 0.12s;
+}
+.chrome #navigate-btn:hover  { filter: brightness(1.1); }
+.chrome #navigate-btn:active { filter: brightness(0.95); }
+.chrome #navigate-btn:disabled { opacity: 0.45; cursor: default; }
+
+.chrome-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--ax-ink-500);
+  white-space: nowrap;
+}
+
+/* ── Override header in desktop to remove traffic lights
+   (the tab bar takes the full glass treatment) ───────────────── */
+body > header {
+  display: none; /* desktop chrome replaces the web header */
+}
+
+/* Reset main to fill under tab-bar + chrome (no header offset) */
+body {
+  display: flex;
+  flex-direction: column;
+}
+
+/* The desktop layout stacks: tab-bar → chrome → main → footer */
+main {
+  grid-template-columns: 1fr 288px;
+}
+
+/* ── Splash screen (Aether wallpaper + navy/teal CTA) ───────────── */
+.splash {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(79, 176, 191, 0.35), transparent 55%),
+    radial-gradient(ellipse at 80% 70%, rgba(37, 87, 136, 0.45), transparent 60%),
+    linear-gradient(160deg, #0e2338 0%, #163454 50%, #2f7a8c 100%);
+  z-index: 10;
+}
+.splash-inner { text-align: center; }
+
+.splash-inner .brand {
+  font-family: 'Inter', sans-serif;
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #fff;
+  margin-bottom: 10px;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+}
+.splash-inner .brand span {
+  color: var(--ax-teal-300);
+}
+.splash-inner p {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  margin: 0 0 24px;
+  letter-spacing: 0.01em;
+}
+.splash-inner button {
+  background: var(--ax-grad-soft);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 10px 28px;
+  border-radius: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow:
+    0 1px 0 rgba(255,255,255,0.22) inset,
+    0 8px 24px -6px rgba(14, 35, 56, 0.5);
+  transition: filter 0.15s, transform 0.15s;
+}
+.splash-inner button:hover {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+}
+
+/* ── Agent panel ────────────────────────────────────────────────── */
+.agent-panel {
+  border-bottom: 1px solid var(--ax-border);
+  padding-bottom: 8px;
+  margin-bottom: 2px;
+}
+
+.driver-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px 8px;
+  font-size: 12px;
+}
+.driver-label { color: var(--ax-ink-400); font-size: 11px; }
+.driver-value { font-weight: 600; font-size: 12px; }
+.driver-none  { color: var(--ax-ink-400); }
+.driver-human { color: var(--ax-ok); }
+.driver-agent { color: var(--ax-teal-600); }
+
+.agent-controls {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding: 0 8px 4px;
+}
+.agent-controls button {
+  background: var(--ax-surface);
+  color: var(--ax-ink-700);
+  border: 1px solid var(--ax-border-strong);
+  padding: 3px 9px;
+  border-radius: var(--ax-radius-sm);
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-size: 11.5px;
+  font-weight: 500;
+  box-shadow: var(--ax-bevel-btn);
+  transition: background 0.1s, color 0.1s, border-color 0.1s;
+}
+.agent-controls button:hover {
+  background: #fff;
+  border-color: var(--ax-teal-500);
+  color: var(--ax-navy-700);
+}
+
+#action-feed {
+  max-height: 160px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ax-paper-300) transparent;
+}
+
+/* ── Dot indicator for active sessions in dock/tray ─────────────── */
+.session-dot {
+  display: inline-block;
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--ax-teal-400);
+  box-shadow: 0 0 6px var(--ax-teal-400);
+  margin-right: 5px;
+  vertical-align: middle;
+}
