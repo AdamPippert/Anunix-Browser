@@ -284,6 +284,58 @@ class BrowserSession:
             "type": type(result).__name__,
         }
 
+    async def click_at_coords(self, x: int, y: int) -> None:
+        await self._page.mouse.click(x, y)
+        await self._bridge.record_action(
+            self.session_id, "click_coords", {"x": x, "y": y}
+        )
+        await self.bus.publish("clicked_coords", {"x": x, "y": y})
+
+    async def key_press(self, key: str) -> None:
+        _KEY_MAP = {
+            "Enter": "Enter", "Backspace": "Backspace", "Delete": "Delete",
+            "Escape": "Escape", "Tab": "Tab", "ArrowUp": "ArrowUp",
+            "ArrowDown": "ArrowDown", "ArrowLeft": "ArrowLeft",
+            "ArrowRight": "ArrowRight", " ": "Space",
+        }
+        pw_key = _KEY_MAP.get(key, key)
+        if len(pw_key) == 1:
+            await self._page.keyboard.type(pw_key)
+        else:
+            await self._page.keyboard.press(pw_key)
+        await self.bus.publish("key_pressed", {"key": key})
+
+    async def submit_form(self, action: str, method: str,
+                          fields: Dict[str, str]) -> Dict[str, Any]:
+        method = method.upper() if method else "GET"
+        if method == "GET":
+            params = "&".join(
+                f"{k}={v}" for k, v in fields.items()
+            )
+            sep = "&" if "?" in action else "?"
+            url = f"{action}{sep}{params}" if params else action
+            return await self.navigate(url)
+        # POST: use Playwright evaluate to build and submit a form
+        fields_js = ", ".join(
+            f'[{repr(k)}, {repr(v)}]' for k, v in fields.items()
+        )
+        await self._page.evaluate(
+            f"""() => {{
+                const f = document.createElement('form');
+                f.method = 'POST';
+                f.action = {repr(action)};
+                const data = [{fields_js}];
+                data.forEach(([n, v]) => {{
+                    const i = document.createElement('input');
+                    i.name = n; i.value = v; f.appendChild(i);
+                }});
+                document.body.appendChild(f);
+                f.submit();
+            }}"""
+        )
+        await self._page.wait_for_load_state("load")
+        return {"url": self._page.url, "method": "POST"}
+
     async def frame_screenshot(self) -> Optional[bytes]:
         if self._closed:
             return None

@@ -22,6 +22,10 @@ help:
 	@echo "  make clean    Remove build artefacts"
 	@echo "  make agent    Run the example agent against a running daemon"
 	@echo "  make demo     Spin up daemon + open UI + run example agent"
+	@echo "  make desktop-deps   Install Node deps for Tauri desktop app"
+	@echo "  make desktop-dev    Hot-reload Tauri desktop window (needs Rust)"
+	@echo "  make desktop-build  Release bundle for macOS/Linux"
+	@echo "  make desktop-sync   Sync web/static assets → desktop/static"
 
 $(VENV):
 	$(PY) -m venv $(VENV)
@@ -59,3 +63,26 @@ demo:
 clean:
 	rm -rf $(VENV) build dist *.egg-info .pytest_cache .ruff_cache
 	find . -name __pycache__ -type d -prune -exec rm -rf {} +
+
+# ── Desktop app targets ────────────────────────────────────────────────────────
+# Sync shared web assets into desktop/static/ before building/running.
+.PHONY: desktop-sync
+desktop-sync:
+	cp web/static/protocol.js desktop/static/protocol.js
+	cp web/static/app.js      desktop/static/app.js
+	cp web/static/app.css     desktop/static/app.css
+
+# `make desktop-dev` — hot-reload Tauri dev window (requires Rust + Tauri CLI).
+.PHONY: desktop-dev
+desktop-dev: desktop-sync
+	cd desktop && npm run dev
+
+# `make desktop-build` — produce a release bundle under desktop/src-tauri/target/release/.
+.PHONY: desktop-build
+desktop-build: desktop-sync
+	cd desktop && npm run build
+
+# `make desktop-deps` — install Node deps and Tauri CLI for the desktop project.
+.PHONY: desktop-deps
+desktop-deps:
+	cd desktop && npm install

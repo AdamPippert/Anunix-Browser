@@ -14,6 +14,7 @@ from anxbrowser.protocol import (
     validate_navigate,
     validate_observe,
     validate_scroll,
+    validate_submit,
     validate_type,
     validate_wait_for,
 )
@@ -125,3 +126,28 @@ class TestEval:
     def test_missing(self):
         with pytest.raises(ProtocolError):
             validate_eval({})
+
+
+class TestSubmit:
+    def test_defaults(self):
+        out = validate_submit({})
+        assert out["method"] == "GET"
+        assert out["action"] == ""
+        assert out["fields"] == {}
+
+    def test_get_with_fields(self):
+        out = validate_submit({"action": "https://s.com/", "method": "get", "fields": {"q": "hi"}})
+        assert out["method"] == "GET"
+        assert out["fields"] == {"q": "hi"}
+
+    def test_post(self):
+        out = validate_submit({"method": "POST", "fields": {"user": "alice"}})
+        assert out["method"] == "POST"
+
+    def test_bad_method(self):
+        with pytest.raises(ProtocolError):
+            validate_submit({"method": "DELETE"})
+
+    def test_non_dict_fields(self):
+        with pytest.raises(ProtocolError):
+            validate_submit({"fields": ["q", "hi"]})

@@ -118,7 +118,6 @@ function attach(sid) {
     } else if (msg.type === "event") {
       pushEvent({kind: msg.kind, payload: msg.payload, seq: msg.seq, ts: msg.ts});
       if (msg.kind === "cursor") placeCursor(msg.payload);
-      if (msg.kind === "pii_warning") showPiiWarning(msg.payload, ws);
       if (typeof onBrowserEvent === "function") onBrowserEvent(msg);
     }
   };
@@ -211,151 +210,22 @@ if (_releaseBtn) _releaseBtn.addEventListener("click", async () => {
   await apiPost(`/api/v1/sessions/${STATE.sessionId}/release`, {});
 });
 
-/* ── Pointer helpers ──────────────────────────────────────────────── */
-
-function _pageCoords(e) {
-  const img  = $("#frame");
-  if (!img) return null;
-  const rect = img.getBoundingClientRect();
-  if (e.clientX < rect.left || e.clientX > rect.right) return null;
-  if (e.clientY < rect.top  || e.clientY > rect.bottom) return null;
-  return {
-    x: Math.round((e.clientX - rect.left) / rect.width  * (img.naturalWidth  || rect.width)),
-    y: Math.round((e.clientY - rect.top)  / rect.height * (img.naturalHeight || rect.height)),
-  };
-}
-
 document.addEventListener("mousemove", (e) => {
   if (!STATE.ws || STATE.ws.readyState !== 1) return;
-  const coords = _pageCoords(e);
-  if (!coords) return;
-  STATE.ws.send(JSON.stringify({type: "cursor", actor: STATE.actor, ...coords}));
+  const img = $("#frame");
+  if (!img) return;
+  const rect = img.getBoundingClientRect();
+  if (e.clientX < rect.left || e.clientX > rect.right) return;
+  if (e.clientY < rect.top || e.clientY > rect.bottom) return;
+  const xr = (e.clientX - rect.left) / rect.width;
+  const yr = (e.clientY - rect.top) / rect.height;
+  STATE.ws.send(JSON.stringify({
+    type: "cursor",
+    actor: STATE.actor,
+    x: Math.round(xr * (img.naturalWidth || rect.width)),
+    y: Math.round(yr * (img.naturalHeight || rect.height)),
+  }));
 });
-
-document.addEventListener("click", (e) => {
-  if (!STATE.ws || STATE.ws.readyState !== 1) return;
-  const coords = _pageCoords(e);
-  if (!coords) return;
-  STATE.ws.send(JSON.stringify({type: "click", ...coords}));
-  /* Capture keyboard input to the frame element so keydown fires */
-  const frame = $("#frame");
-  if (frame) { frame.tabIndex = 0; frame.focus(); }
-});
-
-document.addEventListener("keydown", (e) => {
-  if (!STATE.ws || STATE.ws.readyState !== 1) return;
-  /* Only forward keys when the frame (or body) has focus */
-  const frame = $("#frame");
-  if (frame && document.activeElement !== frame &&
-      document.activeElement !== document.body) return;
-  /* Don't forward browser shortcuts */
-  if (e.ctrlKey || e.metaKey) return;
-  STATE.ws.send(JSON.stringify({type: "keydown", key: e.key, code: e.code}));
-});
-
-/* Scroll wheel over the frame → send delta to session */
-document.addEventListener("wheel", (e) => {
-  if (!STATE.ws || STATE.ws.readyState !== 1) return;
-  if (!_pageCoords(e)) return;
-  e.preventDefault();
-  STATE.ws.send(JSON.stringify({type: "scroll", dy: Math.round(e.deltaY)}));
-}, {passive: false});
-
-/* ── PII warning modal ─────────────────────────────────────────── */
-
-function showPiiWarning(payload, ws) {
-  const existing = document.getElementById("pii-modal");
-  if (existing) existing.remove();
-
-  const domain = payload.domain || "this page";
-  const types  = payload.types  || "unknown";
-
-  const modal = document.createElement("div");
-  modal.id = "pii-modal";
-  modal.innerHTML = `
-    <div class="pii-backdrop"></div>
-    <div class="pii-dialog">
-      <div class="pii-icon">⚠</div>
-      <h3>PII Detected</h3>
-      <p>An agent is accessing <strong>${domain}</strong>, which contains
-         personally identifiable information.</p>
-      <p class="pii-types">Detected: <code>${types}</code></p>
-      <p class="pii-note">The agent received redacted content.
-         You can allow the original below.</p>
-      <div class="pii-actions">
-        <button class="pii-btn pii-redact" data-action="redact_once">
-          Keep Redacted
-        </button>
-        <button class="pii-btn pii-bypass" data-action="bypass_once">
-          Allow Once
-        </button>
-        <button class="pii-btn pii-always" data-action="bypass_always">
-          Always Allow ${domain}
-        </button>
-      </div>
-    </div>`;
-
-  const style = document.createElement("style");
-  style.textContent = `
-    .pii-backdrop {
-      position:fixed; inset:0; background:rgba(11,26,43,.55);
-      backdrop-filter:blur(4px); z-index:9998;
-    }
-    .pii-dialog {
-      position:fixed; top:50%; left:50%;
-      transform:translate(-50%,-50%);
-      background:#fdfcf9; border-radius:10px;
-      padding:28px 32px; width:420px; max-width:90vw;
-      box-shadow:0 8px 40px rgba(11,26,43,.35);
-      font-family:Inter,sans-serif; z-index:9999;
-      border:1px solid rgba(14,35,56,.12);
-    }
-    .pii-icon { font-size:2rem; text-align:center; margin-bottom:8px; }
-    .pii-dialog h3 {
-      margin:0 0 10px; font-size:1.1rem; font-weight:600;
-      color:#0e2338; text-align:center;
-    }
-    .pii-dialog p { font-size:.875rem; color:#1a2733; margin:0 0 8px; }
-    .pii-types code {
-      background:#efece6; padding:2px 6px; border-radius:4px;
-      font-family:'JetBrains Mono',monospace; font-size:.8rem;
-    }
-    .pii-note { color:#6b7280; font-size:.8rem; margin-top:4px; }
-    .pii-actions {
-      display:flex; flex-direction:column; gap:8px; margin-top:18px;
-    }
-    .pii-btn {
-      padding:9px 14px; border-radius:6px; border:none; cursor:pointer;
-      font-family:Inter,sans-serif; font-size:.875rem; font-weight:500;
-      transition:opacity .15s;
-    }
-    .pii-btn:hover { opacity:.85; }
-    .pii-redact  { background:#efece6; color:#1a2733; }
-    .pii-bypass  { background:#1d4470; color:#fff; }
-    .pii-always  { background:linear-gradient(135deg,#163454,#3a94a6);
-                   color:#fff; }
-  `;
-  document.head.appendChild(style);
-  document.body.appendChild(modal);
-
-  modal.querySelectorAll(".pii-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const action = btn.dataset.action;
-      if (ws && ws.readyState === 1) {
-        ws.send(JSON.stringify({type: "pii_response", action}));
-      }
-      modal.remove();
-      style.remove();
-      if (action !== "redact_once") {
-        pushEvent({kind: "pii_bypassed",
-                   payload: {domain, action}});
-      }
-    });
-  });
-
-  pushEvent({kind: "pii_warning",
-             payload: {domain, types}});
-}
 
 refreshHealth();
 refreshSessions();

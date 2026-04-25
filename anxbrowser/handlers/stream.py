@@ -114,3 +114,29 @@ async def _handle_client_message(
         y = int(msg.get("y", 0))
         actor = str(msg.get("actor", "viewer"))
         await session.bus.publish("cursor", {"actor": actor, "x": x, "y": y})
+    elif kind == "click":
+        if not session.closed:
+            x = int(msg.get("x", 0))
+            y = int(msg.get("y", 0))
+            try:
+                await session.click_at_coords(x, y)
+            except Exception as exc:
+                log.debug("ws click failed: %s", exc)
+    elif kind == "keydown":
+        if not session.closed:
+            key = str(msg.get("key", ""))
+            if key:
+                try:
+                    await session.key_press(key)
+                except Exception as exc:
+                    log.debug("ws keydown failed: %s", exc)
+    elif kind == "scroll":
+        if not session.closed:
+            dy = int(msg.get("dy", 0))
+            try:
+                await session.scroll(dy=dy)
+            except Exception as exc:
+                log.debug("ws scroll failed: %s", exc)
+    elif kind == "pii_response":
+        action = str(msg.get("action", "redact_once"))
+        await session.bus.publish("pii_response", {"action": action})
