@@ -126,13 +126,15 @@ tools/               # Host-side utilities
 
 ## Status
 
-**2026.4.24** — Full collaborative input and form submission. Observers connected to the live stream can now click, type, scroll, and press keys directly in the shared Playwright session. A new `POST /api/v1/sessions/{sid}/submit` endpoint handles form submission for both GET (URL construction) and POST (synthetic form element). The Aether design system is live across the web UI and desktop app, and the desktop Tauri wrapper adds traffic-light chrome, a glass tab bar, and an agent panel. The Anunix kernel browser engine uses `arch_time_now()` for session timestamps.
+**2026.4.25** — Checkpoint release. Merges the 2026.4.24 feature batch into `main` (PR #2). 46 tests passing; protocol schema v1 declared stable. Development pauses while OS-level work continues; next browser release targets native engine integration.
+
+**2026.4.24** — Full collaborative input and form submission. Observers connected to the live stream can now click, type, scroll, and press keys directly in the shared Playwright session. A new `POST /api/v1/sessions/{sid}/submit` endpoint handles form submission for both GET (URL construction) and POST (synthetic form element). The Aether design system is live across the web UI and desktop app, and the desktop Tauri wrapper adds traffic-light chrome, a glass tab bar, and an agent panel.
 
 **2026.4.19** — Native kernel streaming. anxbrowserd serves binary JPEG frames to the Anunix kernel via `GET /api/v1/sessions/{sid}/stream_raw`, enabling graphical browser rendering on bare metal and in QEMU. The daemon binds `0.0.0.0`; the QEMU guest connects at `10.0.2.2:9090`. Frame rate is ~30 FPS, viewport auto-sizes to the Anunix framebuffer.
 
 **Phase 0 — Foundation.** Daemon boots, sessions launch Playwright engines (Chromium and Firefox) with per-session engine selection, basic actions (navigate, click, type, observe, screenshot) work end to end, the collaborative UI streams live screenshots, and the Anunix bridge records actions as State Objects when Anunix is reachable.
 
-See [`RELEASE-2026.4.24.md`](RELEASE-2026.4.24.md) for the latest release notes and [`docs/ROADMAP.md`](docs/ROADMAP.md) for what comes next.
+See [`RELEASE-2026.4.25.md`](RELEASE-2026.4.25.md) for the latest release notes and [`docs/ROADMAP.md`](docs/ROADMAP.md) for what comes next.
 
 ---
 
