@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Anunix Browser</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="static/app.css">
+  <link rel="stylesheet" href="static/desktop.css">
+</head>
+<body>
+
+  <!-- Glass tab strip (Aether topbar pattern) -->
+  <div class="tab-bar" id="tab-bar">
+    <button class="tab-new" id="new-tab" title="New tab">+</button>
+  </div>
+
+  <!-- Browser chrome: nav, URL bar, Go, status (Aether toolstrip) -->
+  <div class="chrome">
+    <div class="chrome-nav">
+      <button class="chrome-btn" id="back-btn"   title="Back">&#8592;</button>
+      <button class="chrome-btn" id="fwd-btn"    title="Forward">&#8594;</button>
+      <button class="chrome-btn" id="reload-btn" title="Reload">&#8635;</button>
+    </div>
+    <input id="url-input" type="text" placeholder="https://example.com"
+           autocomplete="off" spellcheck="false" />
+    <button id="navigate-btn" data-label="Go">Go</button>
+    <div class="chrome-status">
+      <span id="status" class="status">connecting&hellip;</span>
+      <span id="bridge-indicator"></span>
+    </div>
+  </div>
+
+  <main>
+    <section class="viewer">
+      <div class="canvas">
+        <img id="frame" alt="live view" />
+        <div class="cursor-layer" id="cursor-layer"></div>
+        <!-- Aether-styled splash shown until first frame arrives -->
+        <div class="splash" id="no-session">
+          <div class="splash-inner">
+            <div class="brand">anunix<span> browser</span></div>
+            <p>Collaborative web browsing for humans and AI agents.</p>
+            <button id="new-session">Start browsing</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="side">
+      <!-- Agent panel: driver status + live action feed -->
+      <div class="agent-panel">
+        <h3>Agent</h3>
+        <div class="driver-row">
+          <span class="driver-label">Driver</span>
+          <span id="driver-name" class="driver-value driver-none">none</span>
+        </div>
+        <div class="agent-controls">
+          <button id="claim-btn">Take control</button>
+          <button id="release-btn">Release</button>
+          <button id="observe-btn">Observe</button>
+        </div>
+        <h3>Action feed</h3>
+        <ol id="action-feed" reversed></ol>
+      </div>
+
+      <h3>Sessions</h3>
+      <ul id="sessions"></ul>
+
+      <h3>Event log</h3>
+      <ol id="events" reversed></ol>
+    </section>
+  </main>
+
+  <footer>
+    <span>ANX-Browser Protocol v0.1</span>
+    <span>Anunix Browser Desktop 0.1</span>
+  </footer>
+
+  <!-- Load order: init → protocol → panels → app logic -->
+  <script src="static/init.js"></script>
+  <script src="static/protocol.js"></script>
+  <script src="static/agent-panel.js"></script>
+  <script src="static/session-tabs.js"></script>
+  <script src="static/app.js"></script>
+
+  <script>
+    // URL bar: Enter to navigate
+    document.getElementById("url-input").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") document.getElementById("navigate-btn").click();
+    });
+    // Back / forward / reload via eval (daemon does not expose history API yet)
+    document.getElementById("back-btn").addEventListener("click", () => {
+      if (typeof STATE !== "undefined" && STATE.sessionId)
+        apiPost(`/api/v1/sessions/${STATE.sessionId}/eval`, {expression: "history.back()"});
+    });
+    document.getElementById("fwd-btn").addEventListener("click", () => {
+      if (typeof STATE !== "undefined" && STATE.sessionId)
+        apiPost(`/api/v1/sessions/${STATE.sessionId}/eval`, {expression: "history.forward()"});
+    });
+    document.getElementById("reload-btn").addEventListener("click", () => {
+      if (typeof STATE !== "undefined" && STATE.sessionId)
+        apiPost(`/api/v1/sessions/${STATE.sessionId}/eval`, {expression: "location.reload()"});
+    });
+  </script>
+</body>
+</html>

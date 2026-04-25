@@ -4,12 +4,22 @@
   <meta charset="utf-8">
   <title>Anunix-Browser — Collaborative Viewer</title>
   <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/ui/static/app.css">
 </head>
 <body>
   <header>
+    <div class="wbtns">
+      <button class="wbtn close" title="Close"></button>
+      <button class="wbtn min"   title="Minimize"></button>
+      <button class="wbtn max"   title="Maximize"></button>
+    </div>
     <div class="brand">anunix-browser</div>
+    <div class="header-spacer"></div>
     <div class="status" id="status">loading&hellip;</div>
+    <span id="bridge-indicator"></span>
   </header>
 
   <main>
@@ -17,7 +27,7 @@
       <div class="toolbar">
         <button id="new-session">New session</button>
         <input id="url-input" type="text" placeholder="https://example.com" />
-        <button id="navigate-btn">Navigate</button>
+        <button id="navigate-btn" data-label="Navigate">Navigate</button>
         <button id="observe-btn">Observe</button>
         <button id="claim-btn">Take control</button>
         <button id="release-btn">Release</button>
@@ -38,9 +48,10 @@
 
   <footer>
     <span>ANX-Browser Protocol v0.1</span>
-    <span id="bridge-indicator"></span>
+    <span id="bridge-indicator-foot"></span>
   </footer>
 
+  <script src="/ui/static/protocol.js"></script>
   <script src="/ui/static/app.js"></script>
 </body>
 </html>

@@ -20,6 +20,7 @@ from ..protocol import (
     validate_navigate,
     validate_observe,
     validate_scroll,
+    validate_submit,
     validate_type,
     validate_wait_for,
 )
@@ -268,6 +269,27 @@ async def eval_js(request: web.Request) -> web.Response:
         result = await session.eval_js(**params)
     except Exception as exc:
         return _problem("invalid_request", str(exc), 400)
+    return web.json_response(result)
+
+
+async def submit_form(request: web.Request) -> web.Response:
+    cap = _cap(request)
+    try:
+        require_verbs(cap, ["navigate"])
+    except PermissionError as exc:
+        return _problem("forbidden_verb", str(exc), 403)
+    manager: SessionManager = request.app["manager"]
+    session = _require_session(manager, request.match_info["sid"])
+    body = await _read_json(request)
+    try:
+        params = validate_submit(body)
+    except ProtocolError as exc:
+        return _problem(exc.code, exc.message, exc.http_status)
+    try:
+        result = await session.submit_form(**params)
+    except Exception as exc:
+        log.exception("submit_form failed")
+        return _problem("navigation_failed", str(exc), 502)
     return web.json_response(result)
 
 
