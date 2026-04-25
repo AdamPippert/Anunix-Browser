@@ -100,6 +100,7 @@ def build_app(cfg: Config | None = None) -> web.Application:
     app.router.add_post("/api/v1/sessions/{sid}/scroll", sessions_h.scroll)
     app.router.add_post("/api/v1/sessions/{sid}/wait_for", sessions_h.wait_for)
     app.router.add_post("/api/v1/sessions/{sid}/eval", sessions_h.eval_js)
+    app.router.add_post("/api/v1/sessions/{sid}/submit", sessions_h.submit_form)
     app.router.add_post("/api/v1/sessions/{sid}/claim", sessions_h.claim)
     app.router.add_post("/api/v1/sessions/{sid}/release", sessions_h.release)
     app.router.add_get("/api/v1/sessions/{sid}/stream", stream_h.stream)
