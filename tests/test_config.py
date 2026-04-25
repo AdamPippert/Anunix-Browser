@@ -9,7 +9,7 @@ from anxbrowser.config import Config
 def test_defaults():
     with mock.patch.dict(os.environ, {}, clear=True):
         cfg = Config.from_env()
-    assert cfg.host == "127.0.0.1"
+    assert cfg.host == "0.0.0.0"
     assert cfg.port == 9090
     assert cfg.default_namespace == "/sessions"
 

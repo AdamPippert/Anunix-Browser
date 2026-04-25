@@ -20,6 +20,7 @@ from ..protocol import (
     validate_navigate,
     validate_observe,
     validate_scroll,
+    validate_submit,
     validate_type,
     validate_wait_for,
 )
@@ -280,13 +281,12 @@ async def submit_form(request: web.Request) -> web.Response:
     manager: SessionManager = request.app["manager"]
     session = _require_session(manager, request.match_info["sid"])
     body = await _read_json(request)
-    action = str(body.get("action", ""))
-    method = str(body.get("method", "GET"))
-    fields = body.get("fields", {})
-    if not isinstance(fields, dict):
-        return _problem("invalid_request", "fields must be an object", 400)
     try:
-        result = await session.submit_form(action, method, {str(k): str(v) for k, v in fields.items()})
+        params = validate_submit(body)
+    except ProtocolError as exc:
+        return _problem(exc.code, exc.message, exc.http_status)
+    try:
+        result = await session.submit_form(**params)
     except Exception as exc:
         log.exception("submit_form failed")
         return _problem("navigation_failed", str(exc), 502)
