@@ -271,6 +271,28 @@ async def eval_js(request: web.Request) -> web.Response:
     return web.json_response(result)
 
 
+async def submit_form(request: web.Request) -> web.Response:
+    cap = _cap(request)
+    try:
+        require_verbs(cap, ["navigate"])
+    except PermissionError as exc:
+        return _problem("forbidden_verb", str(exc), 403)
+    manager: SessionManager = request.app["manager"]
+    session = _require_session(manager, request.match_info["sid"])
+    body = await _read_json(request)
+    action = str(body.get("action", ""))
+    method = str(body.get("method", "GET"))
+    fields = body.get("fields", {})
+    if not isinstance(fields, dict):
+        return _problem("invalid_request", "fields must be an object", 400)
+    try:
+        result = await session.submit_form(action, method, {str(k): str(v) for k, v in fields.items()})
+    except Exception as exc:
+        log.exception("submit_form failed")
+        return _problem("navigation_failed", str(exc), 502)
+    return web.json_response(result)
+
+
 async def claim(request: web.Request) -> web.Response:
     cap = _cap(request)
     manager: SessionManager = request.app["manager"]

@@ -106,26 +106,33 @@ Starts the daemon, opens the UI in your default browser, and kicks off an agent 
 ```
 anxbrowser/          # Daemon source (Python)
   server.py          # HTTP + WebSocket entry point
-  session.py         # Session manager
-  handlers/          # Route handlers (sessions, actions, streaming)
+  session.py         # Session manager (Playwright wrapper)
+  handlers/          # Route handlers (sessions, streaming, actions)
   bridge/            # Anunix bridge (State Objects, Cells, Tensors)
   protocol/          # ANX-Browser Protocol schemas
+desktop/             # Tauri-based native desktop wrapper
+  index.html         # Desktop shell (tab bar + agent panel)
+  static/            # Aether-styled CSS/JS for the desktop chrome
+  src-tauri/         # Rust Tauri backend
 docs/                # Architecture, protocol, roadmap
-web/                 # Collaborative UI (static HTML/JS)
+web/                 # Collaborative web UI (static HTML/JS)
 examples/            # Agent-driven and collaborative demos
 tests/               # Unit tests
-scripts/             # Dev scripts
+tools/               # Host-side utilities
+  anxbproxy.py       # HTTP CONNECT proxy for kernel HTTPS (port 8118)
 ```
 
 ---
 
 ## Status
 
-**2026.4.19** — Native kernel streaming. anxbrowserd now serves binary JPEG frames directly to the Anunix kernel via `GET /api/v1/sessions/{sid}/stream_raw`, enabling graphical browser rendering on bare metal and in QEMU. The daemon binds `0.0.0.0` by default so the QEMU guest can connect at `10.0.2.2:9090`. Frame rate is ~30 FPS. Session viewport auto-sizes to match the Anunix framebuffer dimensions.
+**2026.4.24** — Full collaborative input and form submission. Observers connected to the live stream can now click, type, scroll, and press keys directly in the shared Playwright session. A new `POST /api/v1/sessions/{sid}/submit` endpoint handles form submission for both GET (URL construction) and POST (synthetic form element). The Aether design system is live across the web UI and desktop app, and the desktop Tauri wrapper adds traffic-light chrome, a glass tab bar, and an agent panel. The Anunix kernel browser engine uses `arch_time_now()` for session timestamps.
+
+**2026.4.19** — Native kernel streaming. anxbrowserd serves binary JPEG frames to the Anunix kernel via `GET /api/v1/sessions/{sid}/stream_raw`, enabling graphical browser rendering on bare metal and in QEMU. The daemon binds `0.0.0.0`; the QEMU guest connects at `10.0.2.2:9090`. Frame rate is ~30 FPS, viewport auto-sizes to the Anunix framebuffer.
 
 **Phase 0 — Foundation.** Daemon boots, sessions launch Playwright engines (Chromium and Firefox) with per-session engine selection, basic actions (navigate, click, type, observe, screenshot) work end to end, the collaborative UI streams live screenshots, and the Anunix bridge records actions as State Objects when Anunix is reachable.
 
-See [`RELEASE-2026.4.19.md`](RELEASE-2026.4.19.md) for the latest release notes and [`docs/ROADMAP.md`](docs/ROADMAP.md) for what comes next.
+See [`RELEASE-2026.4.24.md`](RELEASE-2026.4.24.md) for the latest release notes and [`docs/ROADMAP.md`](docs/ROADMAP.md) for what comes next.
 
 ---
 
